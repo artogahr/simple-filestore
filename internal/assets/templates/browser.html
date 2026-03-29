@@ -9,9 +9,27 @@
   <script src="/static/js/htmx.min.js"></script>
   <style>[x-cloak]{display:none}</style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col"
+      x-data="browser('{{.Folder}}', '{{.CurrentPath}}')"
+      @keydown.escape.window="lightbox = null">
 
 {{template "user-header" .}}
+
+<!-- Image lightbox -->
+<div x-show="lightbox" x-cloak
+     class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+     @click="lightbox = null">
+  <button @click="lightbox = null"
+          class="absolute top-4 right-4 text-white/60 hover:text-white text-3xl leading-none font-light">✕</button>
+  <img :src="lightbox" :alt="lightboxName"
+       class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl"
+       @click.stop>
+  <a :href="lightbox" :download="lightboxName"
+     class="absolute bottom-4 right-4 text-white/50 hover:text-white text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+     @click.stop>
+    download
+  </a>
+</div>
 
 <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6">
   <!-- Breadcrumbs -->
@@ -26,58 +44,86 @@
     {{end}}
   </nav>
 
-  <!-- Actions bar -->
-  <div class="flex items-center gap-2 mb-4 flex-wrap" x-data="{ showMkdir: false, showUpload: false }">
-    <button @click="showUpload = !showUpload; showMkdir = false"
+  <!-- Toolbar -->
+  <div class="flex items-center gap-2 mb-4 flex-wrap">
+    <!-- Upload files button -->
+    <button @click="showUpload = !showUpload; showMkdir = false; showFolderUpload = false"
             :class="showUpload ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'"
             class="flex items-center gap-1.5 text-white text-sm font-medium px-3 py-2 rounded-xl transition-colors">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-      Upload
+      Upload files
     </button>
-    <button @click="showMkdir = !showMkdir; showUpload = false"
+    <!-- Upload folder button -->
+    <button @click="showFolderUpload = !showFolderUpload; showUpload = false; showMkdir = false"
+            :class="showFolderUpload ? 'bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'"
+            class="flex items-center gap-1.5 text-white text-sm font-medium px-3 py-2 rounded-xl transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      Upload folder
+    </button>
+    <!-- New folder button -->
+    <button @click="showMkdir = !showMkdir; showUpload = false; showFolderUpload = false"
             class="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-xl border border-gray-300 transition-colors">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h5a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
       New folder
     </button>
+    <!-- Download all -->
+    <a href="/zip?path={{.CurrentPath}}"
+       class="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-xl border border-gray-300 transition-colors ml-auto">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      Download all
+    </a>
+  </div>
 
-    <!-- Upload form -->
-    <div x-show="showUpload" x-cloak class="w-full mt-2 bg-white border border-gray-200 rounded-xl p-4">
-      <form
-        hx-post="/upload"
-        hx-target="#file-list"
-        hx-swap="innerHTML"
-        hx-encoding="multipart/form-data"
-        @htmx:after-request.camel="showUpload = false"
-        class="flex items-center gap-3 flex-wrap"
-      >
-        <input type="hidden" name="path" value="{{.CurrentPath}}">
-        <input type="file" name="files" multiple required
-               class="block text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:rounded-lg cursor-pointer">
-        <div class="flex gap-2">
-          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1.5 rounded-lg transition-colors">Upload</button>
-          <button type="button" @click="showUpload = false" class="text-gray-500 hover:text-gray-700 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
-        </div>
-      </form>
-    </div>
+  <!-- Upload files form -->
+  <div x-show="showUpload" x-cloak class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+    <form
+      hx-post="/upload"
+      hx-target="#file-list"
+      hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      @htmx:after-request.camel="showUpload = false"
+      class="flex items-center gap-3 flex-wrap"
+    >
+      <input type="hidden" name="path" value="{{.CurrentPath}}">
+      <input type="file" name="file" multiple required
+             class="block text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:rounded-lg cursor-pointer flex-1">
+      <div class="flex gap-2">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1.5 rounded-lg">Upload</button>
+        <button type="button" @click="showUpload = false" class="text-gray-500 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
+      </div>
+    </form>
+  </div>
 
-    <!-- New folder form -->
-    <div x-show="showMkdir" x-cloak class="w-full mt-2 bg-white border border-gray-200 rounded-xl p-4">
-      <form
-        hx-post="/mkdir"
-        hx-target="#file-list"
-        hx-swap="innerHTML"
-        @htmx:after-request.camel="showMkdir = false"
-        class="flex items-center gap-3"
-      >
-        <input type="hidden" name="path" value="{{.CurrentPath}}">
-        <input type="text" name="name" placeholder="Folder name" required
-               class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 max-w-xs">
-        <div class="flex gap-2">
-          <button type="submit" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm px-4 py-1.5 rounded-lg transition-colors">Create</button>
-          <button type="button" @click="showMkdir = false" class="text-gray-500 hover:text-gray-700 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
-        </div>
-      </form>
+  <!-- Upload folder form (uses JS fetch for webkitRelativePath support) -->
+  <div x-show="showFolderUpload" x-cloak class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+    <div class="flex items-center gap-3 flex-wrap">
+      <input type="file" id="folder-input" webkitdirectory multiple
+             @change="startFolderUpload($event)"
+             class="block text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:rounded-lg cursor-pointer flex-1">
+      <div class="flex items-center gap-3">
+        <span x-show="uploadProgress" class="text-sm text-gray-500" x-text="uploadProgress"></span>
+        <button type="button" @click="showFolderUpload = false; uploadProgress = ''" class="text-gray-500 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
+      </div>
     </div>
+  </div>
+
+  <!-- New folder form -->
+  <div x-show="showMkdir" x-cloak class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+    <form
+      hx-post="/mkdir"
+      hx-target="#file-list"
+      hx-swap="innerHTML"
+      @htmx:after-request.camel="showMkdir = false"
+      class="flex items-center gap-3"
+    >
+      <input type="hidden" name="path" value="{{.CurrentPath}}">
+      <input type="text" name="name" placeholder="Folder name" required
+             class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 max-w-xs">
+      <div class="flex gap-2">
+        <button type="submit" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm px-4 py-1.5 rounded-lg">Create</button>
+        <button type="button" @click="showMkdir = false" class="text-gray-500 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
+      </div>
+    </form>
   </div>
 
   <!-- File list -->
@@ -85,6 +131,49 @@
     {{template "file-list" .}}
   </div>
 </main>
+
+<script>
+function browser(folder, currentPath) {
+  return {
+    folder,
+    currentPath,
+    showUpload: false,
+    showFolderUpload: false,
+    showMkdir: false,
+    lightbox: null,
+    lightboxName: '',
+    uploadProgress: '',
+
+    openLightbox(url, name) {
+      this.lightbox = url;
+      this.lightboxName = name;
+    },
+
+    async startFolderUpload(event) {
+      const files = [...event.target.files];
+      if (!files.length) return;
+      let done = 0;
+      this.uploadProgress = `Uploading 0 / ${files.length}…`;
+      for (const file of files) {
+        const relpath = file.webkitRelativePath || file.name;
+        const fd = new FormData();
+        fd.append('path', this.currentPath);
+        fd.append('relpath', relpath);
+        fd.append('file', file);
+        try {
+          await fetch('/upload', { method: 'POST', body: fd });
+        } catch (e) { /* continue on error */ }
+        done++;
+        this.uploadProgress = `Uploading ${done} / ${files.length}…`;
+      }
+      this.uploadProgress = '';
+      this.showFolderUpload = false;
+      // Refresh the file list
+      htmx.ajax('GET', '/browse/' + this.currentPath, { target: '#file-list', swap: 'innerHTML' });
+    }
+  }
+}
+</script>
 
 </body>
 </html>
@@ -100,20 +189,32 @@
 <div class="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden shadow-sm">
   {{range .Entries}}
   <div class="flex items-center group px-4 py-3 hover:bg-gray-50 transition-colors" x-data="{ renaming: false, newName: '{{.Name}}' }">
-    <!-- Icon + name -->
-    <div class="flex items-center gap-3 flex-1 min-w-0">
+    <!-- Icon -->
+    <div class="flex-shrink-0 mr-3">
       {{if .IsDir}}
-      <svg class="w-5 h-5 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+      <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+      {{else if isImage .Name}}
+      <svg class="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
       {{else}}
-      <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
       {{end}}
+    </div>
 
-      <!-- Name display -->
-      <span x-show="!renaming" class="truncate text-sm leading-snug">
+    <!-- Name (display / rename) -->
+    <div class="flex-1 min-w-0">
+      <span x-show="!renaming" class="block truncate text-sm leading-snug">
         {{if .IsDir}}
-          <a href="/browse/{{joinPath $.CurrentPath .Name}}" class="hover:text-blue-600 font-medium transition-colors">{{.Name}}</a>
+          <a href="/browse/{{joinPath $.CurrentPath .Name}}"
+             class="hover:text-blue-600 font-medium transition-colors">{{.Name}}</a>
+        {{else if isImage .Name}}
+          {{/* Images: lightbox click + shareable link */}}
+          <button @click="openLightbox('/{{joinPath $.Folder $.CurrentPath .Name}}', '{{.Name}}')"
+                  class="hover:text-blue-600 transition-colors text-left">{{.Name}}</button>
         {{else}}
-          <a href="/preview/{{joinPath $.CurrentPath .Name}}" class="hover:text-blue-600 transition-colors">{{.Name}}</a>
+          {{/* All other files: open directly in browser (PDF, video, text, etc.) */}}
+          <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
+             target="_blank"
+             class="hover:text-blue-600 transition-colors">{{.Name}}</a>
         {{end}}
       </span>
 
@@ -123,31 +224,41 @@
             hx-target="#file-list"
             hx-swap="innerHTML"
             @htmx:after-request.camel="renaming = false"
-            class="flex items-center gap-2 flex-1 min-w-0">
+            class="flex items-center gap-2">
         <input type="hidden" name="path" value="{{joinPath $.CurrentPath .Name}}">
         <input type="text" name="name" x-model="newName"
                @keydown.escape="renaming = false"
-               class="border border-blue-400 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 w-48">
-        <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs font-medium whitespace-nowrap">Save</button>
+               class="border border-blue-400 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+        <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Save</button>
         <button type="button" @click="renaming = false" class="text-gray-400 hover:text-gray-600 text-xs">Cancel</button>
       </form>
     </div>
 
     <!-- Meta + actions -->
-    <div class="flex items-center gap-3 ml-3 flex-shrink-0">
+    <div class="flex items-center gap-2 ml-3 flex-shrink-0">
       {{if not .IsDir}}
       <span class="text-xs text-gray-400 hidden sm:block tabular-nums">{{humanSize .Size}}</span>
       {{end}}
-      <span class="text-xs text-gray-400 hidden md:block whitespace-nowrap">{{formatTime .ModTime}}</span>
+      <span class="text-xs text-gray-400 hidden lg:block whitespace-nowrap">{{formatTime .ModTime}}</span>
 
       <div class="flex items-center gap-0.5">
-        {{if not .IsDir}}
-        <a href="/files/{{joinPath $.CurrentPath .Name}}"
+        {{if .IsDir}}
+        {{/* Folder: download as ZIP */}}
+        <a href="/zip?path={{joinPath $.CurrentPath .Name}}"
+           title="Download as ZIP"
+           class="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </a>
+        {{else}}
+        {{/* File: download (force attachment) */}}
+        <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
+           download="{{.Name}}"
            title="Download"
            class="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         </a>
         {{end}}
+
         <button @click="renaming = true; $nextTick(() => { let inp = $el.closest('[x-data]').querySelector('input[name=name]'); if(inp) inp.focus() })"
                 title="Rename"
                 class="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">

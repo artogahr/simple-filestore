@@ -3,12 +3,14 @@
 package storage
 
 import (
+	"archive/zip"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 	"os"
@@ -119,8 +121,8 @@ func validateFileName(name string) error {
 // --- Listing ------------------------------------------------------------------
 
 // List returns the contents of relPath within folder.
-// relPath = "" means the folder root. Hidden entries (starting with ".") are
-// excluded from the listing (this hides .trash and other internals).
+// relPath = "" means the folder root. All entries are returned including
+// hidden ones (e.g. .trash).
 func (s *Store) List(folder, relPath string) ([]Entry, error) {
 	var target string
 	var err error
@@ -144,10 +146,6 @@ func (s *Store) List(folder, relPath string) ([]Entry, error) {
 	var entries []Entry
 	for _, de := range des {
 		name := de.Name()
-		// Skip hidden entries (trash, etc.)
-		if strings.HasPrefix(name, ".") {
-			continue
-		}
 		info, err := de.Info()
 		if err != nil {
 			continue
@@ -557,4 +555,75 @@ func DetectContentType(f *os.File) string {
 	n, _ := f.Read(buf)
 	f.Seek(0, io.SeekStart)
 	return http.DetectContentType(buf[:n])
+}
+
+// IsImage reports whether the filename extension is a common image format.
+func IsImage(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".bmp":
+		return true
+	}
+	return false
+}
+
+// StreamZip writes a ZIP archive of folder/relPath to w.
+// relPath="" zips the folder root. All files are included recursively.
+func (s *Store) StreamZip(folder, relPath string, w io.Writer) error {
+	var root string
+	var err error
+	if relPath == "" {
+		root, err = s.safeJoin(folder)
+	} else {
+		root, err = s.safeJoin(folder, relPath)
+	}
+	if err != nil {
+		return err
+	}
+
+	info, err := os.Stat(root)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("not a directory: %s", relPath)
+	}
+
+	zw := zip.NewWriter(w)
+	defer zw.Close()
+
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip unreadable entries
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return nil
+		}
+
+		finfo, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		header, err := zip.FileInfoHeader(finfo)
+		if err != nil {
+			return nil
+		}
+		header.Name = filepath.ToSlash(rel)
+		header.Method = zip.Deflate
+
+		fw, err := zw.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer f.Close()
+		_, err = io.Copy(fw, f)
+		return err
+	})
 }

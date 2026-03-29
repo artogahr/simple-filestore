@@ -41,7 +41,7 @@ func New(
 
 // RegisterRoutes registers all routes on mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	// Public routes
+	// Public routes — specific paths first, then catch-all
 	mux.HandleFunc("GET /{$}", h.loginPage)
 	mux.HandleFunc("POST /login", h.postLogin)
 	mux.HandleFunc("GET /logout", h.logout)
@@ -52,20 +52,20 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// User-authenticated routes
 	mux.Handle("GET /browse/", h.auth.RequireUser(http.HandlerFunc(h.browse)))
 	mux.Handle("GET /browse", h.auth.RequireUser(http.HandlerFunc(h.browseRoot)))
-	mux.Handle("GET /files/", h.auth.RequireUser(http.HandlerFunc(h.download)))
 	mux.Handle("POST /upload", h.auth.RequireUser(http.HandlerFunc(h.upload)))
 	mux.Handle("POST /mkdir", h.auth.RequireUser(http.HandlerFunc(h.mkdir)))
 	mux.Handle("POST /rename", h.auth.RequireUser(http.HandlerFunc(h.rename)))
 	mux.Handle("DELETE /files/", h.auth.RequireUser(http.HandlerFunc(h.deleteFile)))
-	mux.Handle("GET /preview/", h.auth.RequireUser(http.HandlerFunc(h.preview)))
-	mux.Handle("GET /trash", h.auth.RequireUser(http.HandlerFunc(h.trashList)))
-	mux.Handle("POST /restore", h.auth.RequireUser(http.HandlerFunc(h.restore)))
-	mux.Handle("DELETE /trash-item/", h.auth.RequireUser(http.HandlerFunc(h.permanentDelete)))
+	mux.Handle("GET /zip", h.auth.RequireUser(http.HandlerFunc(h.zipDownload)))
 
 	// Admin routes
 	mux.Handle("GET /admin", h.auth.RequireAdmin(http.HandlerFunc(h.adminPanel)))
 	mux.Handle("POST /admin/folders", h.auth.RequireAdmin(http.HandlerFunc(h.adminCreateFolder)))
 	mux.Handle("DELETE /admin/folders/", h.auth.RequireAdmin(http.HandlerFunc(h.adminDeleteFolder)))
+
+	// Unauthenticated public file access: /{folder}/{rest...}
+	// Registered last — all more-specific routes above take precedence.
+	mux.HandleFunc("GET /{folder}/{rest...}", h.servePublicFile)
 }
 
 // renderError writes an error response. For HTMX requests it sends a minimal

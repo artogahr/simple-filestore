@@ -67,7 +67,8 @@ func main() {
 		"humanSize":  humanSize,
 		"formatTime": formatTime,
 		"joinPath":   joinPath,
-		"sub": func(a, b int) int { return a - b },
+		"isImage":    storage.IsImage,
+		"sub":        func(a, b int) int { return a - b },
 	}
 
 	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFS(assets.FS, "templates/*.html")

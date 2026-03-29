@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/artogahr/simple-filestore/internal/middleware"
@@ -85,7 +86,7 @@ func (h *Handler) download(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	folder := middleware.FolderFromContext(r.Context())
-	relPath := r.FormValue("path")
+	currentPath := r.FormValue("path")
 
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<30) // 10 GB
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -93,44 +94,86 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files := r.MultipartForm.File["files"]
-	if len(files) == 0 {
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			h.renderError(w, r, http.StatusBadRequest, "No file provided.")
-			return
+	// relpath is set by the folder-upload JS to preserve directory structure.
+	// e.g. relpath="my-docs/sub/file.txt", path="" → upload to sub/file.txt
+	relpath := r.FormValue("relpath")
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		h.renderError(w, r, http.StatusBadRequest, "No file provided.")
+		return
+	}
+	defer file.Close()
+
+	var uploadDir, filename string
+	if relpath != "" {
+		// Folder upload: relpath carries the full relative path within the
+		// selected folder (e.g. "docs/sub/report.pdf").
+		// We join currentPath + the directory part of relpath.
+		dir := filepath.Dir(filepath.ToSlash(relpath))
+		if dir == "." {
+			dir = ""
 		}
-		defer file.Close()
-		if err := h.store.Upload(folder, relPath, header.Filename, file); err != nil {
-			h.renderError(w, r, http.StatusInternalServerError, fmt.Sprintf("Upload failed: %v", err))
-			return
-		}
+		uploadDir = joinPathStr(currentPath, dir)
+		filename = filepath.Base(relpath)
 	} else {
-		for _, fh := range files {
-			f, err := fh.Open()
-			if err != nil {
-				continue
-			}
-			h.store.Upload(folder, relPath, fh.Filename, f)
-			f.Close()
-		}
+		uploadDir = currentPath
+		filename = header.Filename
+	}
+
+	if err := h.store.Upload(folder, uploadDir, filename, file); err != nil {
+		h.renderError(w, r, http.StatusInternalServerError, fmt.Sprintf("Upload failed: %v", err))
+		return
 	}
 
 	if isHTMX(r) {
-		// Refresh the file list
-		entries, _ := h.store.List(folder, relPath)
+		entries, _ := h.store.List(folder, currentPath)
 		data := BrowseData{
 			Folder:      folder,
-			CurrentPath: relPath,
+			CurrentPath: currentPath,
 			Entries:     entries,
-			Breadcrumbs: buildBreadcrumbs(folder, relPath),
+			Breadcrumbs: buildBreadcrumbs(folder, currentPath),
 		}
-		w.Header().Set("HX-Trigger", "fileListRefresh")
 		_ = h.tmpl.ExecuteTemplate(w, "file-list", data)
 		return
 	}
-	target := "/browse/" + relPath
-	http.Redirect(w, r, target, http.StatusSeeOther)
+	http.Redirect(w, r, "/browse/"+currentPath, http.StatusSeeOther)
+}
+
+// zipDownload streams a ZIP archive of folder/relPath to the client.
+func (h *Handler) zipDownload(w http.ResponseWriter, r *http.Request) {
+	folder := middleware.FolderFromContext(r.Context())
+	relPath := r.URL.Query().Get("path")
+
+	// Determine ZIP filename from the directory being zipped
+	zipName := folder
+	if relPath != "" {
+		zipName = path.Base(relPath)
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.zip"`, zipName))
+
+	if err := h.store.StreamZip(folder, relPath, w); err != nil {
+		// Can't write a proper error response after headers are sent
+		return
+	}
+}
+
+// joinPathStr joins path segments, skipping empty ones.
+func joinPathStr(parts ...string) string {
+	var sb strings.Builder
+	for _, p := range parts {
+		p = strings.Trim(p, "/")
+		if p == "" {
+			continue
+		}
+		if sb.Len() > 0 {
+			sb.WriteByte('/')
+		}
+		sb.WriteString(p)
+	}
+	return sb.String()
 }
 
 func (h *Handler) mkdir(w http.ResponseWriter, r *http.Request) {

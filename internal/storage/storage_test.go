@@ -3,7 +3,6 @@ package storage
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -95,7 +94,7 @@ func TestValidateFileName(t *testing.T) {
 
 // --- List tests ---------------------------------------------------------------
 
-func TestList_hidesTrash(t *testing.T) {
+func TestList_showsTrash(t *testing.T) {
 	s := newTestStore(t)
 	folder := "testfolder"
 	root := filepath.Join(s.root, folder)
@@ -106,13 +105,18 @@ func TestList_hidesTrash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
+	names := make(map[string]bool)
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name, ".") {
-			t.Errorf("List returned hidden entry %q", e.Name)
-		}
+		names[e.Name] = true
 	}
-	if len(entries) != 1 || entries[0].Name != "visible.txt" {
-		t.Errorf("expected [visible.txt], got %+v", entries)
+	if !names["visible.txt"] {
+		t.Error("List should include visible.txt")
+	}
+	if !names[".trash"] {
+		t.Error("List should include .trash (trash is now visible)")
+	}
+	if len(entries) != 2 {
+		t.Errorf("expected 2 entries, got %d: %+v", len(entries), entries)
 	}
 }
 
