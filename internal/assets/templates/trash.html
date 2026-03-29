@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trash — {{.Folder}} — simple-filestore</title>
+  <link rel="stylesheet" href="/static/css/output.css">
+  <script defer src="/static/js/alpine.min.js"></script>
+  <script src="/static/js/htmx.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+<header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+  <div class="flex items-center gap-3">
+    <a href="/browse/" class="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded-lg hover:bg-gray-100">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </a>
+    <span class="font-semibold text-gray-800">Trash</span>
+    <span class="text-gray-400 text-sm">— {{.Folder}}</span>
+  </div>
+  <a href="/logout" class="text-sm text-gray-500 hover:text-gray-800 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">Sign out</a>
+</header>
+
+<main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6">
+  <p class="text-xs text-gray-400 mb-4">Items in trash are permanently deleted when you choose "Delete forever". Restoring moves them back to their original location.</p>
+  <div id="trash-list">
+    {{template "trash-list" .}}
+  </div>
+</main>
+
+</body>
+</html>
+
+{{define "trash-list"}}
+{{if not .Entries}}
+<div class="text-center text-gray-400 py-16">
+  <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+  <p class="text-sm">Trash is empty</p>
+</div>
+{{else}}
+<div class="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden shadow-sm">
+  {{range .Entries}}
+  <div class="flex items-center px-4 py-3 gap-3">
+    {{if .IsDir}}
+    <svg class="w-5 h-5 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+    {{else}}
+    <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    {{end}}
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium truncate">{{.Name}}</p>
+      <p class="text-xs text-gray-400 truncate">{{.OriginalPath}} · deleted {{formatTime .DeletedAt}}</p>
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <form hx-post="/restore" hx-target="#trash-list" hx-swap="innerHTML">
+        <input type="hidden" name="id" value="{{.ID}}">
+        <button type="submit" class="text-xs text-blue-600 hover:text-blue-800 font-medium px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">Restore</button>
+      </form>
+      <button
+        hx-delete="/trash-item/{{.ID}}"
+        hx-target="#trash-list"
+        hx-swap="innerHTML"
+        hx-confirm="Permanently delete '{{.Name}}'? This cannot be undone."
+        class="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+        Delete forever
+      </button>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

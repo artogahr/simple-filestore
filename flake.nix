@@ -20,7 +20,7 @@
           nativeBuildInputs = [ pkgs.tailwindcss ];
 
           preBuild = ''
-            tailwindcss -i ./input.css -o ./static/css/output.css --minify
+            tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
           '';
 
           meta = {

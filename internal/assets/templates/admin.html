@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — simple-filestore</title>
+  <link rel="stylesheet" href="/static/css/output.css">
+  <script defer src="/static/js/alpine.min.js"></script>
+  <script src="/static/js/htmx.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+<header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+  <div class="flex items-center gap-2">
+    <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    <span class="font-semibold text-gray-800">Admin panel</span>
+  </div>
+  <a href="/admin/logout" class="text-sm text-gray-500 hover:text-gray-800 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">Sign out</a>
+</header>
+
+<main class="flex-1 max-w-2xl w-full mx-auto px-4 py-8 space-y-6">
+
+  {{if .Error}}
+  <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{{.Error}}</div>
+  {{end}}
+
+  <!-- Create folder -->
+  <section class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Create folder</h2>
+    <form hx-post="/admin/folders"
+          hx-target="#folder-list"
+          hx-swap="innerHTML"
+          class="flex gap-2">
+      <input type="text" name="name" placeholder="folder-name" required
+             pattern="[a-zA-Z0-9_\-]{1,64}"
+             title="Letters, numbers, hyphens, underscores (max 64 chars)"
+             class="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+      <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-xl transition-colors">
+        Create
+      </button>
+    </form>
+    <div id="admin-error" class="mt-2"></div>
+  </section>
+
+  <!-- Folder list -->
+  <section class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Folders</h2>
+    <div id="folder-list">
+      {{template "admin-folder-list" .}}
+    </div>
+  </section>
+
+  <p class="text-xs text-gray-400 text-center">
+    Deleting a folder moves it to <code class="bg-gray-100 px-1 py-0.5 rounded">workspace/deleted/</code> — files are preserved.
+  </p>
+
+</main>
+
+</body>
+</html>
+
+{{define "admin-folder-list"}}
+{{if not .Folders}}
+<p class="text-sm text-gray-400 py-2">No folders yet. Create one above.</p>
+{{else}}
+<div class="divide-y divide-gray-100 -mx-2">
+  {{range .Folders}}
+  <div class="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-gray-50 transition-colors">
+    <div class="flex items-center gap-2.5">
+      <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+      <span class="text-sm font-medium">{{.}}</span>
+    </div>
+    <button
+      hx-delete="/admin/folders/{{.}}"
+      hx-target="#folder-list"
+      hx-swap="innerHTML"
+      hx-confirm="Move folder '{{.}}' to deleted? Files will be preserved in workspace/deleted/."
+      class="text-xs text-red-500 hover:text-red-700 px-3 py-1 rounded-lg hover:bg-red-50 font-medium transition-colors">
+      Delete
+    </button>
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}
+
+{{define "admin-error"}}
+{{if .Error}}
+<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{{.Error}}</div>
+{{end}}
+{{end}}

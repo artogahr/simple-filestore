@@ -4,10 +4,10 @@ dev:
 	air
 
 css:
-	tailwindcss -i ./input.css -o ./static/css/output.css --watch
+	tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --watch
 
 css-build:
-	tailwindcss -i ./input.css -o ./static/css/output.css --minify
+	tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
 
 build: css-build
 	go build -o ./result/simple-filestore ./cmd/server

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Name}} — simple-filestore</title>
+  <link rel="stylesheet" href="/static/css/output.css">
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+<!-- Header -->
+<header class="bg-gray-800 px-4 py-3 flex items-center justify-between flex-shrink-0">
+  <div class="flex items-center gap-3 min-w-0">
+    <a href="{{.BackURL}}" class="text-gray-400 hover:text-white flex-shrink-0 p-1 rounded hover:bg-gray-700 transition-colors">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </a>
+    <span class="text-white text-sm font-medium truncate">{{.Name}}</span>
+  </div>
+  <a href="/files/{{.Path}}"
+     download="{{.Name}}"
+     class="flex items-center gap-1.5 text-sm text-gray-300 hover:text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-colors flex-shrink-0 ml-3">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+    Download
+  </a>
+</header>
+
+<!-- Preview area -->
+<main class="flex-1 flex items-center justify-center p-4 overflow-hidden">
+  {{if eq .PreviewType "image"}}
+  <img src="{{.ContentURL}}" alt="{{.Name}}" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl">
+
+  {{else if eq .PreviewType "video"}}
+  <video controls class="max-w-full max-h-[85vh] rounded-lg shadow-2xl" preload="metadata">
+    <source src="{{.ContentURL}}">
+    <p class="text-gray-400 text-sm">Your browser does not support video playback.</p>
+  </video>
+
+  {{else if eq .PreviewType "audio"}}
+  <div class="bg-gray-800 rounded-2xl p-10 text-center shadow-2xl max-w-sm w-full">
+    <svg class="w-16 h-16 text-gray-600 mx-auto mb-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+    <p class="text-gray-300 text-sm mb-5 font-medium truncate">{{.Name}}</p>
+    <audio controls class="w-full">
+      <source src="{{.ContentURL}}">
+    </audio>
+  </div>
+
+  {{else if eq .PreviewType "pdf"}}
+  <iframe src="{{.ContentURL}}" class="w-full h-[85vh] max-w-5xl rounded-lg shadow-2xl bg-white" title="{{.Name}}"></iframe>
+
+  {{else if eq .PreviewType "text"}}
+  <div class="w-full max-w-5xl">
+    {{if .Truncated}}
+    <div class="bg-yellow-900/30 border border-yellow-700/50 text-yellow-400 text-xs px-4 py-2 rounded-t-lg flex items-center justify-between">
+      <span>Showing first 1 MB — file was truncated</span>
+      <a href="/files/{{.Path}}" download="{{.Name}}" class="underline hover:text-yellow-200">Download full file</a>
+    </div>
+    {{end}}
+    <pre class="bg-gray-800 text-gray-200 text-sm p-6 {{if .Truncated}}rounded-b-lg{{else}}rounded-lg{{end}} overflow-auto max-h-[80vh] whitespace-pre-wrap break-words font-mono leading-relaxed shadow-2xl"><code>{{.TextContent}}</code></pre>
+  </div>
+
+  {{else}}
+  <div class="text-center">
+    <svg class="w-16 h-16 text-gray-700 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    <p class="text-gray-500 mb-5">Preview not available for this file type</p>
+    <a href="/files/{{.Path}}" download="{{.Name}}"
+       class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      Download file
+    </a>
+  </div>
+  {{end}}
+</main>
+
+</body>
+</html>
