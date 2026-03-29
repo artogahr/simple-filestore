@@ -85,7 +85,7 @@ func main() {
 	h.RegisterRoutes(mux)
 
 	// Static files
-	mux.Handle("/static/", http.FileServer(http.FS(assets.FS)))
+	mux.Handle("GET /static/", http.FileServer(http.FS(assets.FS)))
 
 	// Wrap with logging middleware
 	srv := &http.Server{
