@@ -67,22 +67,7 @@ func main() {
 		"humanSize":  humanSize,
 		"formatTime": formatTime,
 		"joinPath":   joinPath,
-		"sub":        func(a, b int) int { return a - b },
-		"not":        func(v any) bool {
-			if v == nil {
-				return true
-			}
-			switch t := v.(type) {
-			case bool:
-				return !t
-			case string:
-				return t == ""
-			case int:
-				return t == 0
-			default:
-				return false
-			}
-		},
+		"sub": func(a, b int) int { return a - b },
 	}
 
 	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFS(assets.FS, "templates/*.html")
