@@ -4,3 +4,13 @@ result-*
 
 # Ignore automatically generated direnv output
 .direnv
+
+# Runtime data (back up by copying the workspace folder)
+workspace/config.json
+workspace/folders/*
+!workspace/folders/.gitkeep
+workspace/deleted/*
+!workspace/deleted/.gitkeep
+
+# Generated CSS (rebuilt by tailwindcss during nix build or `make css-build`)
+# Keep the placeholder committed
