@@ -9,19 +9,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: cachix/install-nix-action@v27
+      - uses: actions/setup-go@v5
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
+          go-version-file: go.mod
+      - run: CGO_ENABLED=0 go test ./...
 
-      - name: Run tests
-        run: nix develop --command bash -c "CGO_ENABLED=0 go test ./..."
-
-  deploy:
+  build:
     needs: test
-    runs-on: [self-hosted, deploy]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
 
-      - name: Deploy
-        run: sudo nixos-rebuild switch --flake ".#$(hostname)"
+      - name: Install Tailwind CSS
+        run: |
+          curl -sL https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 -o tailwindcss
+          chmod +x tailwindcss
+          sudo mv tailwindcss /usr/local/bin/tailwindcss
+
+      - name: Build CSS
+        run: tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
+
+      - name: Build binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o simple-filestore ./cmd/server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simple-filestore
+          path: simple-filestore
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, deploy]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: simple-filestore
+
+      - name: Install and restart
+        run: |
+          chmod +x simple-filestore
+          sudo mv simple-filestore /usr/local/bin/simple-filestore
+          sudo systemctl restart simple-filestore
