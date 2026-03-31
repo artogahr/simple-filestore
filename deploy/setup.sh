@@ -52,5 +52,9 @@ sudo -u github-runner ./config.sh \
 ./svc.sh install github-runner
 ./svc.sh start
 
+# Install 'update' alias in root's shell
+echo "alias update='curl -fsSL https://raw.githubusercontent.com/artogahr/simple-filestore/main/deploy/update.sh | bash'" >> /root/.bashrc
+echo "Installed 'update' alias in /root/.bashrc"
+
 echo "Done. Runner is registered and running."
 echo "Start the app: systemctl start simple-filestore"
