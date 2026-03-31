@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -56,7 +57,10 @@ func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
 	}
 	entries = visible
 
-	diskTotal, diskAvail, _ := h.store.DiskUsage()
+	diskTotal, diskAvail, diskErr := h.store.DiskUsage()
+	if diskErr != nil {
+		slog.Warn("disk usage unavailable", "err", diskErr)
+	}
 	data := BrowseData{
 		Folder:      folder,
 		CurrentPath: relPath,
