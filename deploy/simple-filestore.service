@@ -3,7 +3,7 @@ Description=simple-filestore
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/simple-filestore --workspace /var/lib/simple-filestore
+ExecStart=/usr/local/bin/simple-filestore --workspace /mnt/big_ssd/simple_filestore
 Restart=on-failure
 
 [Install]
