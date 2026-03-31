@@ -1,7 +1,9 @@
 # simple-filestore
 
-A simple self-hosted file sharing web application. No accounts — just folder names
+A simple self-hosted file sharing web application. No accounts, just folder names
 as access keys. Give a group a folder name, they browse and upload files.
+
+I made this only to solve a problem I had, it's a vibe-coded application, not ready to be used by any capacity by anyone else. 
 
 ## Features
 
