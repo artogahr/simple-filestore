@@ -33,12 +33,14 @@ jobs:
 
       - name: Build
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          BASE=$(cat VERSION)
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="v${BASE}.${PATCH}"
           tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-            -ldflags "-X main.Version=git-${SHORT_SHA}" \
+            -ldflags "-X main.Version=${VERSION}" \
             -o simple-filestore ./cmd/server
-          echo "VERSION=git-${SHORT_SHA}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Release
         env:
