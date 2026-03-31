@@ -18,12 +18,21 @@ import (
 	"github.com/artogahr/simple-filestore/internal/storage"
 )
 
+// Version is set at build time via -ldflags "-X main.Version=git-<sha>"
+var Version = "dev"
+
 func main() {
 	var (
 		workspaceDir = flag.String("workspace", "./workspace", "path to workspace directory")
 		portFlag     = flag.Int("port", 0, "port to listen on (overrides config)")
+		showVersion  = flag.Bool("version", false, "print version and exit")
 	)
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
 
 	// Ensure workspace structure exists
 	ws := *workspaceDir
@@ -69,6 +78,7 @@ func main() {
 		"joinPath":   joinPath,
 		"isImage":    storage.IsImage,
 		"sub":        func(a, b int) int { return a - b },
+		"version":    func() string { return Version },
 	}
 
 	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFS(assets.FS, "templates/*.html")
@@ -93,7 +103,7 @@ func main() {
 		Handler: loggingMiddleware(mux),
 	}
 
-	slog.Info("starting simple-filestore", "addr", srv.Addr, "workspace", ws)
+	slog.Info("starting simple-filestore", "addr", srv.Addr, "workspace", ws, "version", Version)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server error", "err", err)
 		os.Exit(1)

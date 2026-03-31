@@ -33,8 +33,12 @@ jobs:
 
       - name: Build
         run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o simple-filestore ./cmd/server
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+            -ldflags "-X main.Version=git-${SHORT_SHA}" \
+            -o simple-filestore ./cmd/server
+          echo "VERSION=git-${SHORT_SHA}" >> "$GITHUB_ENV"
 
       - name: Release
         env:
@@ -43,5 +47,6 @@ jobs:
           gh release delete latest --yes 2>/dev/null || true
           gh release create latest simple-filestore \
             --target main \
-            --title "Latest build" \
-            --notes "Built from ${{ github.sha }}"
+            --title "Latest (${{ env.VERSION }})" \
+            --notes "Version: ${{ env.VERSION }}
+Built from ${{ github.sha }}"
