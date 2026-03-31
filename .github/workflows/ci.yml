@@ -14,9 +14,11 @@ jobs:
           go-version-file: go.mod
       - run: CGO_ENABLED=0 go test ./...
 
-  build:
+  release:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -25,32 +27,18 @@ jobs:
 
       - name: Install Tailwind CSS
         run: |
-          curl -sL https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 -o tailwindcss
-          chmod +x tailwindcss
-          sudo mv tailwindcss /usr/local/bin/tailwindcss
+          curl -sL https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+            -o /usr/local/bin/tailwindcss
+          chmod +x /usr/local/bin/tailwindcss
 
-      - name: Build CSS
-        run: tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
-
-      - name: Build binary
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o simple-filestore ./cmd/server
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: simple-filestore
-          path: simple-filestore
-          retention-days: 7
-
-  deploy:
-    needs: build
-    runs-on: [self-hosted, deploy]
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: simple-filestore
-
-      - name: Install and restart
+      - name: Build
         run: |
-          chmod +x simple-filestore
-          sudo mv simple-filestore /usr/local/bin/simple-filestore
-          sudo systemctl restart simple-filestore
+          tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o simple-filestore ./cmd/server
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          files: simple-filestore
