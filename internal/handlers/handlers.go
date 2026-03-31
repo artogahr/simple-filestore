@@ -58,6 +58,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("DELETE /files/", h.auth.RequireUser(http.HandlerFunc(h.deleteFile)))
 	mux.Handle("GET /zip", h.auth.RequireUser(http.HandlerFunc(h.zipDownload)))
 
+	// Trash routes
+	mux.Handle("GET /trash", h.auth.RequireUser(http.HandlerFunc(h.trashPage)))
+	mux.Handle("POST /restore", h.auth.RequireUser(http.HandlerFunc(h.restore)))
+	mux.Handle("DELETE /trash-item/", h.auth.RequireUser(http.HandlerFunc(h.trashDelete)))
+
 	// Admin routes
 	mux.Handle("GET /admin", h.auth.RequireAdmin(http.HandlerFunc(h.adminPanel)))
 	mux.Handle("POST /admin/folders", h.auth.RequireAdmin(http.HandlerFunc(h.adminCreateFolder)))
