@@ -148,6 +148,9 @@ func (s *Store) List(folder, relPath string) ([]Entry, error) {
 	var entries []Entry
 	for _, de := range des {
 		name := de.Name()
+		if strings.HasPrefix(name, ".") {
+			continue // hide dot-files (.trash, etc.)
+		}
 		info, err := de.Info()
 		if err != nil {
 			continue

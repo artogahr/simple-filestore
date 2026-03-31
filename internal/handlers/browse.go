@@ -48,15 +48,6 @@ func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hide hidden entries (e.g. .trash) from the browser
-	visible := entries[:0]
-	for _, e := range entries {
-		if !strings.HasPrefix(e.Name, ".") {
-			visible = append(visible, e)
-		}
-	}
-	entries = visible
-
 	diskTotalU, diskAvailU, diskErr := h.store.DiskUsage()
 	diskTotal, diskAvail := int64(diskTotalU), int64(diskAvailU)
 	if diskErr != nil {

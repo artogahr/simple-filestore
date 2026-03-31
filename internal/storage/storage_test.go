@@ -112,11 +112,11 @@ func TestList_showsTrash(t *testing.T) {
 	if !names["visible.txt"] {
 		t.Error("List should include visible.txt")
 	}
-	if !names[".trash"] {
-		t.Error("List should include .trash (trash is now visible)")
+	if names[".trash"] {
+		t.Error("List should not include .trash")
 	}
-	if len(entries) != 2 {
-		t.Errorf("expected 2 entries, got %d: %+v", len(entries), entries)
+	if len(entries) != 1 {
+		t.Errorf("expected 1 entry, got %d: %+v", len(entries), entries)
 	}
 }
 
