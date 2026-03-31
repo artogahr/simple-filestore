@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -418,6 +419,20 @@ func (s *Store) PermanentDelete(folder, id string) error {
 		return err
 	}
 	return os.Remove(filepath.Join(trashDir, id+".meta"))
+}
+
+// --- Disk usage ---------------------------------------------------------------
+
+// DiskUsage returns total and available bytes for the filesystem containing
+// the store's root directory.
+func (s *Store) DiskUsage() (total, avail uint64, err error) {
+	var stat syscall.Statfs_t
+	if err = syscall.Statfs(s.root, &stat); err != nil {
+		return
+	}
+	total = stat.Blocks * uint64(stat.Bsize)
+	avail = stat.Bavail * uint64(stat.Bsize)
+	return
 }
 
 // --- Folder management (admin) ------------------------------------------------

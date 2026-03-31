@@ -23,6 +23,8 @@ type BrowseData struct {
 	CurrentPath string // relative path within the folder, "" for root
 	Entries     []storage.Entry
 	Breadcrumbs []Breadcrumb
+	DiskTotal   uint64
+	DiskAvail   uint64
 }
 
 func (h *Handler) browseRoot(w http.ResponseWriter, r *http.Request) {
@@ -54,11 +56,14 @@ func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
 	}
 	entries = visible
 
+	diskTotal, diskAvail, _ := h.store.DiskUsage()
 	data := BrowseData{
 		Folder:      folder,
 		CurrentPath: relPath,
 		Entries:     entries,
 		Breadcrumbs: buildBreadcrumbs(folder, relPath),
+		DiskTotal:   diskTotal,
+		DiskAvail:   diskAvail,
 	}
 
 	if isHTMX(r) {

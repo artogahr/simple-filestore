@@ -78,6 +78,8 @@ func main() {
 		"joinPath":   joinPath,
 		"isImage":    storage.IsImage,
 		"sub":        func(a, b int) int { return a - b },
+		"sub64":      func(a, b uint64) uint64 { return a - b },
+		"pct":        func(a, b uint64) int { if b == 0 { return 0 }; return int(a * 100 / b) },
 		"version":    func() string { return Version },
 	}
 
@@ -99,8 +101,11 @@ func main() {
 
 	// Wrap with logging middleware
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: loggingMiddleware(mux),
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           loggingMiddleware(mux),
+		ReadHeaderTimeout: 30 * time.Second,  // prevent slow-header attacks
+		IdleTimeout:       120 * time.Second, // close idle keep-alive connections
+		// No ReadTimeout/WriteTimeout: large uploads/downloads need unlimited time.
 	}
 
 	slog.Info("starting simple-filestore", "addr", srv.Addr, "workspace", ws, "version", Version)

@@ -91,6 +91,20 @@
     </form>
   </div>
 
+  <!-- Disk usage -->
+  {{if .DiskTotal}}
+  {{$used := (sub64 .DiskTotal .DiskAvail)}}
+  {{$pct := pct $used .DiskTotal}}
+  <div class="flex items-center gap-3 mb-4 text-xs text-gray-400">
+    <span class="flex-shrink-0">{{humanSize .DiskAvail}} free</span>
+    <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div class="h-full rounded-full transition-all {{if ge $pct 90}}bg-red-400{{else if ge $pct 75}}bg-yellow-400{{else}}bg-gray-300{{end}}"
+           style="width:{{$pct}}%"></div>
+    </div>
+    <span class="flex-shrink-0">{{humanSize .DiskTotal}} total</span>
+  </div>
+  {{end}}
+
   <!-- Drop zone -->
   <div id="drop-zone"
        class="border-2 border-dashed border-gray-200 rounded-xl mb-4 transition-colors cursor-pointer"
