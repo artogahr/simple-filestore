@@ -7,7 +7,11 @@
   <link rel="stylesheet" href="/static/css/output.css">
   <script defer src="/static/js/alpine.min.js"></script>
   <script src="/static/js/htmx.min.js"></script>
-  <style>[x-cloak]{display:none}</style>
+  <script src="/static/js/dropzone.min.js"></script>
+  <style>
+    [x-cloak]{display:none}
+    .dz-drag-hover #drop-zone { --tw-border-opacity:1; border-color:rgb(59 130 246/var(--tw-border-opacity)); --tw-bg-opacity:1; background-color:rgb(239 246 255/var(--tw-bg-opacity)); }
+  </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col"
       x-data="browser('{{.Folder}}', '{{.CurrentPath}}')"
@@ -46,65 +50,24 @@
 
   <!-- Toolbar -->
   <div class="flex items-center gap-2 mb-4 flex-wrap">
-    <!-- Upload files button -->
-    <button @click="showUpload = !showUpload; showMkdir = false; showFolderUpload = false"
-            :class="showUpload ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'"
-            class="flex items-center gap-1.5 text-white text-sm font-medium px-3 py-2 rounded-xl transition-colors">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-      Upload files
-    </button>
-    <!-- Upload folder button -->
-    <button @click="showFolderUpload = !showFolderUpload; showUpload = false; showMkdir = false"
-            :class="showFolderUpload ? 'bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'"
-            class="flex items-center gap-1.5 text-white text-sm font-medium px-3 py-2 rounded-xl transition-colors">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-      Upload folder
-    </button>
-    <!-- New folder button -->
-    <button @click="showMkdir = !showMkdir; showUpload = false; showFolderUpload = false"
+    <!-- New folder -->
+    <button @click="showMkdir = !showMkdir"
             class="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-xl border border-gray-300 transition-colors">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h5a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
       New folder
     </button>
+    <!-- Upload folder -->
+    <label class="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-xl border border-gray-300 transition-colors cursor-pointer">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+      <span x-text="folderProgress || 'Upload folder'"></span>
+      <input type="file" webkitdirectory multiple class="hidden" @change="startFolderUpload($event)">
+    </label>
     <!-- Download all -->
     <a href="/zip?path={{.CurrentPath}}"
        class="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-xl border border-gray-300 transition-colors ml-auto">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
       Download all
     </a>
-  </div>
-
-  <!-- Upload files form -->
-  <div x-show="showUpload" x-cloak class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
-    <form
-      hx-post="/upload"
-      hx-target="#file-list"
-      hx-swap="innerHTML"
-      hx-encoding="multipart/form-data"
-      @htmx:after-request.camel="showUpload = false"
-      class="flex items-center gap-3 flex-wrap"
-    >
-      <input type="hidden" name="path" value="{{.CurrentPath}}">
-      <input type="file" name="file" multiple required
-             class="block text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:rounded-lg cursor-pointer flex-1">
-      <div class="flex gap-2">
-        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1.5 rounded-lg">Upload</button>
-        <button type="button" @click="showUpload = false" class="text-gray-500 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- Upload folder form (uses JS fetch for webkitRelativePath support) -->
-  <div x-show="showFolderUpload" x-cloak class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
-    <div class="flex items-center gap-3 flex-wrap">
-      <input type="file" id="folder-input" webkitdirectory multiple
-             @change="startFolderUpload($event)"
-             class="block text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:rounded-lg cursor-pointer flex-1">
-      <div class="flex items-center gap-3">
-        <span x-show="uploadProgress" class="text-sm text-gray-500" x-text="uploadProgress"></span>
-        <button type="button" @click="showFolderUpload = false; uploadProgress = ''" class="text-gray-500 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
-      </div>
-    </div>
   </div>
 
   <!-- New folder form -->
@@ -118,12 +81,35 @@
     >
       <input type="hidden" name="path" value="{{.CurrentPath}}">
       <input type="text" name="name" placeholder="Folder name" required
+             x-init="$watch('showMkdir', v => v && $nextTick(() => $el.focus()))"
+             @keydown.escape="showMkdir = false"
              class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 max-w-xs">
       <div class="flex gap-2">
         <button type="submit" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm px-4 py-1.5 rounded-lg">Create</button>
         <button type="button" @click="showMkdir = false" class="text-gray-500 text-sm px-3 py-1.5 border border-gray-300 rounded-lg">Cancel</button>
       </div>
     </form>
+  </div>
+
+  <!-- Drop zone -->
+  <div id="drop-zone"
+       class="border-2 border-dashed border-gray-200 rounded-xl mb-4 transition-colors cursor-pointer"
+       x-ref="dropzone">
+    <div class="dz-message py-6 text-center pointer-events-none">
+      <svg class="w-7 h-7 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      <p class="text-sm text-gray-400">Drop files here or <span class="text-blue-500">click to browse</span></p>
+    </div>
+  </div>
+
+  <!-- Upload progress -->
+  <div x-show="uploadTotal > 0" x-cloak class="mb-4 bg-white border border-gray-200 rounded-xl px-4 py-3">
+    <div class="flex items-center justify-between text-sm mb-2">
+      <span class="text-gray-600" x-text="`Uploading ${uploadDone} / ${uploadTotal}`"></span>
+      <span class="text-gray-400 text-xs" x-text="uploadPercent + '%'"></span>
+    </div>
+    <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div class="h-full bg-blue-500 rounded-full transition-all duration-200" :style="`width:${uploadPercent}%`"></div>
+    </div>
   </div>
 
   <!-- File list -->
@@ -133,16 +119,57 @@
 </main>
 
 <script>
+Dropzone.autoDiscover = false;
+
 function browser(folder, currentPath) {
   return {
     folder,
     currentPath,
-    showUpload: false,
-    showFolderUpload: false,
     showMkdir: false,
     lightbox: null,
     lightboxName: '',
-    uploadProgress: '',
+    folderProgress: '',
+    uploadTotal: 0,
+    uploadDone: 0,
+    uploadPercent: 0,
+
+    init() {
+      const dz = new Dropzone(this.$refs.dropzone, {
+        url: '/upload',
+        paramName: 'file',
+        params: { path: this.currentPath },
+        parallelUploads: 4,
+        uploadMultiple: false,
+        autoProcessQueue: true,
+        previewsContainer: false,
+        clickable: true,
+        createImageThumbnails: false,
+      });
+
+      dz.on('addedfiles', (files) => {
+        this.uploadTotal += files.length;
+        this.uploadDone = 0;
+        this.uploadPercent = 0;
+      });
+
+      dz.on('uploadprogress', () => {
+        const totalBytes = dz.files.reduce((s, f) => s + (f.size || 0), 0);
+        const sentBytes = dz.files.reduce((s, f) => s + ((f.size || 0) * (f.upload?.progress || 0) / 100), 0);
+        this.uploadPercent = totalBytes > 0 ? Math.round(sentBytes / totalBytes * 100) : 0;
+      });
+
+      dz.on('success', (file) => {
+        this.uploadDone++;
+        dz.removeFile(file);
+      });
+
+      dz.on('queuecomplete', () => {
+        this.uploadTotal = 0;
+        this.uploadDone = 0;
+        this.uploadPercent = 0;
+        htmx.ajax('GET', '/browse/' + this.currentPath, { target: '#file-list', swap: 'innerHTML' });
+      });
+    },
 
     openLightbox(url, name) {
       this.lightbox = url;
@@ -153,22 +180,18 @@ function browser(folder, currentPath) {
       const files = [...event.target.files];
       if (!files.length) return;
       let done = 0;
-      this.uploadProgress = `Uploading 0 / ${files.length}…`;
+      this.folderProgress = `0 / ${files.length}`;
       for (const file of files) {
-        const relpath = file.webkitRelativePath || file.name;
         const fd = new FormData();
         fd.append('path', this.currentPath);
-        fd.append('relpath', relpath);
+        fd.append('relpath', file.webkitRelativePath || file.name);
         fd.append('file', file);
-        try {
-          await fetch('/upload', { method: 'POST', body: fd });
-        } catch (e) { /* continue on error */ }
+        try { await fetch('/upload', { method: 'POST', body: fd }); } catch(e) {}
         done++;
-        this.uploadProgress = `Uploading ${done} / ${files.length}…`;
+        this.folderProgress = `${done} / ${files.length}`;
       }
-      this.uploadProgress = '';
-      this.showFolderUpload = false;
-      // Refresh the file list
+      this.folderProgress = '';
+      event.target.value = '';
       htmx.ajax('GET', '/browse/' + this.currentPath, { target: '#file-list', swap: 'innerHTML' });
     }
   }
@@ -183,7 +206,7 @@ function browser(folder, currentPath) {
 <div class="text-center text-gray-400 py-16">
   <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
   <p class="text-sm">This folder is empty</p>
-  <p class="text-xs mt-1 text-gray-300">Upload files or create a new folder to get started</p>
+  <p class="text-xs mt-1 text-gray-300">Drop files above or click to upload</p>
 </div>
 {{else}}
 <div class="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden shadow-sm">
@@ -207,11 +230,9 @@ function browser(folder, currentPath) {
           <a href="/browse/{{joinPath $.CurrentPath .Name}}"
              class="hover:text-blue-600 font-medium transition-colors">{{.Name}}</a>
         {{else if isImage .Name}}
-          {{/* Images: lightbox click + shareable link */}}
           <button @click="openLightbox('/{{joinPath $.Folder $.CurrentPath .Name}}', '{{.Name}}')"
                   class="hover:text-blue-600 transition-colors text-left">{{.Name}}</button>
         {{else}}
-          {{/* All other files: open directly in browser (PDF, video, text, etc.) */}}
           <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
              target="_blank"
              class="hover:text-blue-600 transition-colors">{{.Name}}</a>
@@ -243,14 +264,12 @@ function browser(folder, currentPath) {
 
       <div class="flex items-center gap-0.5">
         {{if .IsDir}}
-        {{/* Folder: download as ZIP */}}
         <a href="/zip?path={{joinPath $.CurrentPath .Name}}"
            title="Download as ZIP"
            class="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         </a>
         {{else}}
-        {{/* File: download (force attachment) */}}
         <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
            download="{{.Name}}"
            title="Download"
