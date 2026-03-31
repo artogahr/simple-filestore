@@ -81,6 +81,13 @@ func main() {
 		"sub64":      func(a, b int64) int64 { return a - b },
 		"pct":        func(a, b int64) int { if b == 0 { return 0 }; return int(a * 100 / b) },
 		"version":    func() string { return Version },
+		"parentDir": func(p string) string {
+			p = strings.TrimRight(p, "/")
+			if idx := strings.LastIndex(p, "/"); idx >= 0 {
+				return p[:idx]
+			}
+			return ""
+		},
 	}
 
 	tmpl, err := template.New("base.html").Funcs(funcMap).ParseFS(assets.FS, "templates/*.html")

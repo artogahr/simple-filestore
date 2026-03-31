@@ -11,6 +11,7 @@
   <style>
     [x-cloak]{display:none}
     .dz-drag-hover #drop-zone { --tw-border-opacity:1; border-color:rgb(59 130 246/var(--tw-border-opacity)); --tw-bg-opacity:1; background-color:rgb(239 246 255/var(--tw-bg-opacity)); }
+    .dnd-over { outline: 2px solid #3b82f6; background-color: #eff6ff !important; border-radius: 0.75rem; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col"
@@ -62,6 +63,19 @@
       <span x-text="folderProgress || 'Upload folder'"></span>
       <input type="file" webkitdirectory multiple class="hidden" @change="startFolderUpload($event)">
     </label>
+    <!-- View toggle -->
+    <button @click="toggleGridView()"
+            :title="gridView ? 'Switch to list view' : 'Switch to grid view'"
+            class="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-xl border border-gray-300 transition-colors">
+      <!-- grid icon -->
+      <svg x-show="!gridView" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+      </svg>
+      <!-- list icon -->
+      <svg x-show="gridView" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+      </svg>
+    </button>
     <!-- Download all -->
     <a href="/zip?path={{.CurrentPath}}"
        class="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-2 rounded-xl border border-gray-300 transition-colors ml-auto">
@@ -91,7 +105,7 @@
     </form>
   </div>
 
-  <!-- Drop zone -->
+  <!-- Drop zone (Dropzone.js upload) -->
   <div id="drop-zone"
        class="border-2 border-dashed border-gray-300 rounded-xl mb-4 transition-colors cursor-pointer hover:border-blue-400 hover:bg-blue-50"
        x-ref="dropzone">
@@ -132,6 +146,7 @@ function browser(folder, currentPath) {
     uploadTotal: 0,
     uploadDone: 0,
     uploadPercent: 0,
+    gridView: localStorage.getItem('sf-grid-view') === '1',
 
     init() {
       const dz = new Dropzone(this.$refs.dropzone, {
@@ -169,6 +184,76 @@ function browser(folder, currentPath) {
         this.uploadPercent = 0;
         htmx.ajax('GET', '/browse/' + this.currentPath, { target: '#file-list', swap: 'innerHTML' });
       });
+
+      this.setupDragDrop();
+    },
+
+    toggleGridView() {
+      this.gridView = !this.gridView;
+      localStorage.setItem('sf-grid-view', this.gridView ? '1' : '0');
+    },
+
+    setupDragDrop() {
+      const list = document.getElementById('file-list');
+      let activeDropEl = null;
+
+      const setActive = (el) => {
+        if (activeDropEl === el) return;
+        if (activeDropEl) activeDropEl.classList.remove('dnd-over');
+        activeDropEl = el;
+        if (el) el.classList.add('dnd-over');
+      };
+
+      list.addEventListener('dragstart', (e) => {
+        const item = e.target.closest('[data-path]');
+        if (!item) return;
+        e.dataTransfer.setData('text/plain', item.dataset.path);
+        e.dataTransfer.effectAllowed = 'move';
+      }, false);
+
+      list.addEventListener('dragend', () => setActive(null), false);
+
+      list.addEventListener('dragover', (e) => {
+        const drop = e.target.closest('[data-dropdir]');
+        if (!drop) { setActive(null); return; }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setActive(drop);
+      }, false);
+
+      list.addEventListener('dragleave', (e) => {
+        if (!list.contains(e.relatedTarget)) setActive(null);
+      }, false);
+
+      list.addEventListener('drop', async (e) => {
+        const drop = e.target.closest('[data-dropdir]');
+        if (!drop) { setActive(null); return; }
+        e.preventDefault();
+        setActive(null);
+        const src = e.dataTransfer.getData('text/plain');
+        const dst = drop.dataset.dropdir;
+        if (!src) return;
+        // Prevent no-op: dropping into the directory the item is already in
+        const srcDir = src.includes('/') ? src.substring(0, src.lastIndexOf('/')) : '';
+        if (srcDir === dst) return;
+        // Prevent moving a directory into itself or a descendant
+        if (src === dst || dst.startsWith(src + '/')) return;
+        await this.moveItem(src, dst);
+      }, false);
+    },
+
+    async moveItem(src, dst) {
+      const body = new URLSearchParams({ src, dst });
+      const res = await fetch('/move', {
+        method: 'POST',
+        headers: { 'HX-Request': 'true' },
+        body,
+      });
+      if (res.ok) {
+        const el = document.getElementById('file-list');
+        el.innerHTML = await res.text();
+        htmx.process(el);
+      }
     },
 
     openLightbox(url, name) {
@@ -202,6 +287,15 @@ function browser(folder, currentPath) {
 </html>
 
 {{define "file-list"}}
+{{/* Parent folder drop zone — visible when not at root, acts as move target */}}
+{{if $.CurrentPath}}
+<div data-dropdir="{{parentDir $.CurrentPath}}"
+     class="flex items-center gap-2 px-4 py-2.5 mb-2 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 transition-colors select-none">
+  <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10l9-7 9 7v11a1 1 0 01-1 1H4a1 1 0 01-1-1V10z"/></svg>
+  <span>Drop here to move to parent folder</span>
+</div>
+{{end}}
+
 {{if not .Entries}}
 <div class="text-center text-gray-400 py-16">
   <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
@@ -209,11 +303,17 @@ function browser(folder, currentPath) {
   <p class="text-xs mt-1 text-gray-300">Drop files above or click to upload</p>
 </div>
 {{else}}
-<div class="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden shadow-sm">
+
+{{/* ===== LIST VIEW ===== */}}
+<div x-show="!gridView" x-cloak class="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden shadow-sm">
   {{range .Entries}}
-  <div class="flex items-center group px-4 py-3 hover:bg-gray-50 transition-colors" x-data="{ renaming: false, newName: '{{.Name}}' }">
+  <div class="flex items-center group px-4 py-3 hover:bg-gray-50 transition-colors"
+       draggable="true"
+       data-path="{{joinPath $.CurrentPath .Name}}"
+       {{if .IsDir}}data-dropdir="{{joinPath $.CurrentPath .Name}}"{{end}}
+       x-data="{ renaming: false, newName: '{{.Name}}' }">
     <!-- Icon -->
-    <div class="flex-shrink-0 mr-3">
+    <div class="flex-shrink-0 mr-3 pointer-events-none">
       {{if .IsDir}}
       <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
       {{else if isImage .Name}}
@@ -228,12 +328,14 @@ function browser(folder, currentPath) {
       <span x-show="!renaming" class="block truncate text-sm leading-snug">
         {{if .IsDir}}
           <a href="/browse/{{joinPath $.CurrentPath .Name}}"
+             draggable="false"
              class="hover:text-blue-600 font-medium transition-colors">{{.Name}}</a>
         {{else if isImage .Name}}
           <button @click="openLightbox('/{{joinPath $.Folder $.CurrentPath .Name}}', '{{.Name}}')"
                   class="hover:text-blue-600 transition-colors text-left">{{.Name}}</button>
         {{else}}
           <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
+             draggable="false"
              target="_blank"
              class="hover:text-blue-600 transition-colors">{{.Name}}</a>
         {{end}}
@@ -265,12 +367,14 @@ function browser(folder, currentPath) {
       <div class="flex items-center gap-0.5">
         {{if .IsDir}}
         <a href="/zip?path={{joinPath $.CurrentPath .Name}}"
+           draggable="false"
            title="Download as ZIP"
            class="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         </a>
         {{else}}
         <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
+           draggable="false"
            download="{{.Name}}"
            title="Download"
            class="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
@@ -297,5 +401,107 @@ function browser(folder, currentPath) {
   </div>
   {{end}}
 </div>
+
+{{/* ===== GRID VIEW ===== */}}
+<div x-show="gridView" x-cloak class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+  {{range .Entries}}
+  <div class="relative group bg-white rounded-xl border border-gray-200 hover:border-blue-300 overflow-hidden transition-colors select-none"
+       draggable="true"
+       data-path="{{joinPath $.CurrentPath .Name}}"
+       {{if .IsDir}}data-dropdir="{{joinPath $.CurrentPath .Name}}"{{end}}
+       x-data="{ renaming: false, newName: '{{.Name}}' }">
+
+    {{/* Rename overlay */}}
+    <div x-show="renaming" x-cloak class="absolute inset-0 z-20 bg-white p-3 flex flex-col gap-2">
+      <p class="text-xs text-gray-500 font-medium truncate">Rename</p>
+      <form hx-post="/rename" hx-target="#file-list" hx-swap="innerHTML"
+            @htmx:after-request.camel="renaming = false" class="flex flex-col gap-2">
+        <input type="hidden" name="path" value="{{joinPath $.CurrentPath .Name}}">
+        <input type="text" name="name" x-model="newName"
+               x-init="$watch('renaming', v => v && $nextTick(() => $el.focus()))"
+               @keydown.escape="renaming = false"
+               class="border border-blue-400 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <div class="flex gap-1">
+          <button type="submit" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">Save</button>
+          <button type="button" @click="renaming = false" class="flex-1 text-gray-500 text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    {{/* Thumbnail / icon */}}
+    {{if .IsDir}}
+    <a href="/browse/{{joinPath $.CurrentPath .Name}}"
+       draggable="false"
+       class="flex aspect-square bg-yellow-50 items-center justify-center hover:bg-yellow-100 transition-colors">
+      <svg class="w-16 h-16 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+    </a>
+    {{else if isImage .Name}}
+    <button @click="openLightbox('/{{joinPath $.Folder $.CurrentPath .Name}}', '{{.Name}}')"
+            class="block w-full aspect-square bg-gray-100 overflow-hidden">
+      <img src="/{{joinPath $.Folder $.CurrentPath .Name}}"
+           draggable="false"
+           alt="{{.Name}}"
+           loading="lazy"
+           class="w-full h-full object-cover hover:scale-105 transition-transform duration-300">
+    </button>
+    {{else}}
+    <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
+       draggable="false"
+       target="_blank"
+       class="flex aspect-square bg-gray-50 items-center justify-center hover:bg-gray-100 transition-colors">
+      <svg class="w-16 h-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+    </a>
+    {{end}}
+
+    {{/* Name & size */}}
+    <div class="px-2 pt-1.5 pb-2">
+      <p class="text-xs text-gray-800 font-medium truncate" title="{{.Name}}">{{.Name}}</p>
+      {{if not .IsDir}}
+      <p class="text-xs text-gray-400 tabular-nums">{{humanSize .Size}}</p>
+      {{end}}
+    </div>
+
+    {{/* Hover actions */}}
+    <div x-show="!renaming" class="absolute top-1 right-1 hidden group-hover:flex bg-white/90 rounded-lg shadow-sm border border-gray-100 p-0.5">
+      {{if .IsDir}}
+      <a href="/zip?path={{joinPath $.CurrentPath .Name}}"
+         draggable="false"
+         @click.stop
+         title="Download as ZIP"
+         class="p-1 text-gray-400 hover:text-gray-700 rounded transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      </a>
+      {{else}}
+      <a href="/{{joinPath $.Folder $.CurrentPath .Name}}"
+         draggable="false"
+         download="{{.Name}}"
+         @click.stop
+         title="Download"
+         class="p-1 text-gray-400 hover:text-gray-700 rounded transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      </a>
+      {{end}}
+      <button @click.stop="renaming = true"
+              title="Rename"
+              class="p-1 text-gray-400 hover:text-gray-700 rounded transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      </button>
+      <button @click.stop
+              draggable="false"
+              hx-delete="/files/{{joinPath $.CurrentPath .Name}}"
+              hx-target="#file-list"
+              hx-swap="innerHTML"
+              hx-confirm="Move '{{.Name}}' to trash?"
+              title="Move to trash"
+              class="p-1 text-gray-400 hover:text-red-500 rounded transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </button>
+    </div>
+  </div>
+  {{end}}
+</div>
+
 {{end}}
 {{end}}

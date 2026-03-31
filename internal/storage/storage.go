@@ -295,6 +295,54 @@ func (s *Store) Rename(folder, oldPath, newName string) error {
 	return os.Rename(src, dst)
 }
 
+// Move moves srcRelPath into dstDir within the same folder.
+// dstDir="" means the folder root. The item keeps its base name.
+func (s *Store) Move(folder, srcRelPath, dstDir string) error {
+	src, err := s.safeJoin(folder, srcRelPath)
+	if err != nil {
+		return err
+	}
+
+	var dstBase string
+	if dstDir == "" {
+		dstBase, err = s.safeJoin(folder)
+	} else {
+		dstBase, err = s.safeJoin(folder, dstDir)
+	}
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Lstat(src); errors.Is(err, os.ErrNotExist) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+
+	dstInfo, err := os.Stat(dstBase)
+	if err != nil {
+		return fmt.Errorf("destination not found: %w", err)
+	}
+	if !dstInfo.IsDir() {
+		return fmt.Errorf("destination is not a directory")
+	}
+
+	// Cannot move into itself or a descendant
+	if dstBase == src || strings.HasPrefix(dstBase, src+string(os.PathSeparator)) {
+		return fmt.Errorf("cannot move a directory into itself")
+	}
+
+	name := filepath.Base(src)
+	dst := filepath.Join(dstBase, name)
+
+	folderRoot := filepath.Join(s.root, folder)
+	if !strings.HasPrefix(dst, folderRoot+string(os.PathSeparator)) {
+		return ErrOutsideRoot
+	}
+
+	return os.Rename(src, dst)
+}
+
 // --- Trash operations ---------------------------------------------------------
 
 // TrashEntry describes an item in the trash.

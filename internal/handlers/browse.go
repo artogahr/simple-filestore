@@ -288,6 +288,36 @@ func (h *Handler) deleteFile(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/browse/"+parentPath, http.StatusSeeOther)
 }
 
+func (h *Handler) moveFile(w http.ResponseWriter, r *http.Request) {
+	folder := middleware.FolderFromContext(r.Context())
+	srcPath := r.FormValue("src")
+	dstDir := r.FormValue("dst")
+
+	// After moving, show the source item's parent directory
+	currentPath := path.Dir(srcPath)
+	if currentPath == "." {
+		currentPath = ""
+	}
+
+	if err := h.store.Move(folder, srcPath, dstDir); err != nil {
+		h.renderError(w, r, http.StatusBadRequest, fmt.Sprintf("Could not move: %v", err))
+		return
+	}
+
+	if isHTMX(r) {
+		entries, _ := h.store.List(folder, currentPath)
+		data := BrowseData{
+			Folder:      folder,
+			CurrentPath: currentPath,
+			Entries:     entries,
+			Breadcrumbs: buildBreadcrumbs(folder, currentPath),
+		}
+		_ = h.tmpl.ExecuteTemplate(w, "file-list", data)
+		return
+	}
+	http.Redirect(w, r, "/browse/"+currentPath, http.StatusSeeOther)
+}
+
 // buildBreadcrumbs constructs navigation breadcrumbs for the given folder/path.
 func buildBreadcrumbs(folder, relPath string) []Breadcrumb {
 	crumbs := []Breadcrumb{

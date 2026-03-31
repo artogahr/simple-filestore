@@ -55,6 +55,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /upload", h.auth.RequireUser(http.HandlerFunc(h.upload)))
 	mux.Handle("POST /mkdir", h.auth.RequireUser(http.HandlerFunc(h.mkdir)))
 	mux.Handle("POST /rename", h.auth.RequireUser(http.HandlerFunc(h.rename)))
+	mux.Handle("POST /move", h.auth.RequireUser(http.HandlerFunc(h.moveFile)))
 	mux.Handle("DELETE /files/", h.auth.RequireUser(http.HandlerFunc(h.deleteFile)))
 	mux.Handle("GET /zip", h.auth.RequireUser(http.HandlerFunc(h.zipDownload)))
 
