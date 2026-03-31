@@ -12,5 +12,11 @@ workspace/folders/*
 workspace/deleted/*
 !workspace/deleted/.gitkeep
 
+# Local dev files (when --workspace points at project root)
+config.json
+folders/
+tmp/
+.claude/
+
 # Generated CSS (rebuilt by tailwindcss during nix build or `make css-build`)
 # Keep the placeholder committed
