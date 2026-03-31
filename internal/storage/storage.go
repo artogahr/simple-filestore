@@ -14,9 +14,10 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -424,14 +425,24 @@ func (s *Store) PermanentDelete(folder, id string) error {
 // --- Disk usage ---------------------------------------------------------------
 
 // DiskUsage returns total and available bytes for the filesystem containing
-// the store's root directory.
+// the store's root directory. Uses df for broad container compatibility.
 func (s *Store) DiskUsage() (total, avail uint64, err error) {
-	var stat syscall.Statfs_t
-	if err = syscall.Statfs(s.root, &stat); err != nil {
+	out, err := exec.Command("df", "-B1", "--output=size,avail", s.root).Output()
+	if err != nil {
 		return
 	}
-	total = stat.Blocks * uint64(stat.Bsize)
-	avail = stat.Bavail * uint64(stat.Bsize)
+	// Output is two header+value lines: "      1B-blocks      Avail\n 123 456\n"
+	lines := strings.Fields(string(out))
+	// lines[0]="1B-blocks" lines[1]="Avail" lines[2]=size lines[3]=avail
+	if len(lines) < 4 {
+		err = fmt.Errorf("unexpected df output: %q", out)
+		return
+	}
+	total, err = strconv.ParseUint(lines[2], 10, 64)
+	if err != nil {
+		return
+	}
+	avail, err = strconv.ParseUint(lines[3], 10, 64)
 	return
 }
 
