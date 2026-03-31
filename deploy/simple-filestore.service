@@ -1,18 +1,10 @@
 [Unit]
-Description=simple-filestore file sharing service
+Description=simple-filestore
 After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/simple-filestore --workspace /var/lib/simple-filestore
 Restart=on-failure
-User=simple-filestore
-Group=simple-filestore
-
-# Security
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=/var/lib/simple-filestore
-PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
