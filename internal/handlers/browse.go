@@ -60,8 +60,6 @@ func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
 	diskTotal, diskAvail, diskErr := h.store.DiskUsage()
 	if diskErr != nil {
 		slog.Warn("disk usage unavailable", "err", diskErr)
-	} else {
-		slog.Info("disk usage", "total", diskTotal, "avail", diskAvail)
 	}
 	data := BrowseData{
 		Folder:      folder,

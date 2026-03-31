@@ -25,6 +25,20 @@
   <div class="flex items-center gap-3">
     <span class="font-semibold text-gray-800">📁 {{.Folder}}</span>
   </div>
+  {{if .DiskTotal}}
+  {{$used := (sub64 .DiskTotal .DiskAvail)}}
+  {{$pct := pct $used .DiskTotal}}
+  <div class="hidden sm:flex items-center gap-2 text-xs text-gray-400 flex-1 max-w-xs mx-6">
+    <span class="flex-shrink-0 tabular-nums">{{humanSize .DiskAvail}} free</span>
+    <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div class="h-full rounded-full {{if ge $pct 90}}bg-red-400{{else if ge $pct 75}}bg-yellow-400{{else}}bg-blue-300{{end}}"
+           style="width:{{$pct}}%"></div>
+    </div>
+    <span class="flex-shrink-0 tabular-nums">{{humanSize .DiskTotal}}</span>
+  </div>
+  {{else}}
+  <div class="flex-1"></div>
+  {{end}}
   <div class="flex items-center gap-2 text-sm">
     <a href="/trash" class="text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100">Trash</a>
     <a href="/logout" class="text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100">Sign out</a>

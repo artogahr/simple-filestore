@@ -91,27 +91,13 @@
     </form>
   </div>
 
-  <!-- Disk usage -->
-  {{if .DiskTotal}}
-  {{$used := (sub64 .DiskTotal .DiskAvail)}}
-  {{$pct := pct $used .DiskTotal}}
-  <div class="flex items-center gap-3 mb-4 text-xs text-gray-400">
-    <span class="flex-shrink-0">{{humanSize .DiskAvail}} free</span>
-    <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-      <div class="h-full rounded-full transition-all {{if ge $pct 90}}bg-red-400{{else if ge $pct 75}}bg-yellow-400{{else}}bg-gray-300{{end}}"
-           style="width:{{$pct}}%"></div>
-    </div>
-    <span class="flex-shrink-0">{{humanSize .DiskTotal}} total</span>
-  </div>
-  {{end}}
-
   <!-- Drop zone -->
   <div id="drop-zone"
-       class="border-2 border-dashed border-gray-200 rounded-xl mb-4 transition-colors cursor-pointer"
+       class="border-2 border-dashed border-gray-300 rounded-xl mb-4 transition-colors cursor-pointer hover:border-blue-400 hover:bg-blue-50"
        x-ref="dropzone">
-    <div class="dz-message py-6 text-center pointer-events-none">
-      <svg class="w-7 h-7 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-      <p class="text-sm text-gray-400">Drop files here or <span class="text-blue-500">click to browse</span></p>
+    <div class="dz-message py-8 text-center pointer-events-none">
+      <svg class="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      <p class="text-sm text-gray-500">Drop files here or <span class="text-blue-500 font-medium">click to browse</span></p>
     </div>
   </div>
 
