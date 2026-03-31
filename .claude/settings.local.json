@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go version:*)",
+      "Bash(tailwindcss --version)",
+      "Bash(curl -sL \"https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js\" -o static/js/htmx.min.js)",
+      "Bash(curl -sL \"https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js\" -o static/js/alpine.min.js)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(go test:*)",
+      "Bash(nix develop:*)",
+      "Bash(git rm:*)",
+      "Bash(fuser -k 8080/tcp)",
+      "Bash(pkill -f \"tmp/main\")",
+      "Bash(pkill air:*)",
+      "Bash(pkill -f air)",
+      "Bash(lsof -ti:8080)",
+      "Bash(xargs kill:*)",
+      "Bash(nix flake:*)",
+      "Bash(git push:*)",
+      "Bash(curl -s http://10.0.0.27:8080/static/css/output.css)",
+      "Bash(curl -s http://10.0.0.27:8080/)",
+      "Bash(curl -sL https://github.com/artogahr/simple-filestore/releases/download/latest/simple-filestore -o /tmp/sf-latest)",
+      "Bash(/tmp/sf-latest --help)",
+      "Bash(chmod +x /tmp/sf-latest)",
+      "Bash(go build:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -fsSL https://unpkg.com/dropzone@5.9.3/dist/dropzone.min.js -o /home/arto/simple-filestore/internal/assets/static/js/dropzone.min.js)",
+      "Bash(curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.js -o /home/arto/simple-filestore/internal/assets/static/js/dropzone.min.js)"
+    ]
+  }
+}

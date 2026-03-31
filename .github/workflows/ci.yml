@@ -36,9 +36,8 @@ jobs:
 
       - name: Build
         run: |
-          BASE=$(cat VERSION)
           PATCH=$(git rev-list --count HEAD)
-          VERSION="v${BASE}.${PATCH}"
+          VERSION="v0.1.${PATCH}"
           tailwindcss -i ./input.css -o ./internal/assets/static/css/output.css --minify
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
             -ldflags "-X main.Version=${VERSION}" \

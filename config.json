@@ -1,0 +1,8 @@
+{
+  "admin_password": "changeme",
+  "port": 8080,
+  "secret_key": "4945cd9c92f41e9c083b34d9fdc6d54b2e9ae6ca3ec731900ae1b35b0194663a",
+  "folders": [
+    "tes"
+  ]
+}
