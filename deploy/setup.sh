@@ -29,8 +29,8 @@ log "Service enabled and started."
 
 # Install 'update' alias
 log "Installing 'update' alias..."
-echo "alias update='curl -fsSL https://raw.githubusercontent.com/${REPO}/main/deploy/update.sh | bash'" >> /root/.bashrc
-log "Added 'update' alias to /root/.bashrc — run 'source /root/.bashrc' or open a new shell."
+echo "alias update-simple-filestore='curl -fsSL https://raw.githubusercontent.com/${REPO}/main/deploy/update.sh | bash'" >> /root/.bashrc
+log "Added 'update-simple-filestore' alias to /root/.bashrc — run 'source /root/.bashrc' or open a new shell."
 
 log ""
 systemctl status simple-filestore --no-pager -l | sed 's/^/    /'
