@@ -42,5 +42,6 @@ jobs:
         run: |
           gh release delete latest --yes 2>/dev/null || true
           gh release create latest simple-filestore \
+            --target main \
             --title "Latest build" \
             --notes "Built from ${{ github.sha }}"
