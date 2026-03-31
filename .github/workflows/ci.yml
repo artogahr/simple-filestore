@@ -50,5 +50,4 @@ jobs:
           gh release create latest simple-filestore \
             --target main \
             --title "Latest (${{ env.VERSION }})" \
-            --notes "Version: ${{ env.VERSION }}
-Built from ${{ github.sha }}"
+            --notes "Version: ${{ env.VERSION }} — built from ${{ github.sha }}"
