@@ -24,8 +24,8 @@ type BrowseData struct {
 	CurrentPath string // relative path within the folder, "" for root
 	Entries     []storage.Entry
 	Breadcrumbs []Breadcrumb
-	DiskTotal   uint64
-	DiskAvail   uint64
+	DiskTotal   int64
+	DiskAvail   int64
 }
 
 func (h *Handler) browseRoot(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +57,8 @@ func (h *Handler) browse(w http.ResponseWriter, r *http.Request) {
 	}
 	entries = visible
 
-	diskTotal, diskAvail, diskErr := h.store.DiskUsage()
+	diskTotalU, diskAvailU, diskErr := h.store.DiskUsage()
+	diskTotal, diskAvail := int64(diskTotalU), int64(diskAvailU)
 	if diskErr != nil {
 		slog.Warn("disk usage unavailable", "err", diskErr)
 	}

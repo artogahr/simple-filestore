@@ -78,8 +78,8 @@ func main() {
 		"joinPath":   joinPath,
 		"isImage":    storage.IsImage,
 		"sub":        func(a, b int) int { return a - b },
-		"sub64":      func(a, b uint64) uint64 { return a - b },
-		"pct":        func(a, b uint64) int { if b == 0 { return 0 }; return int(a * 100 / b) },
+		"sub64":      func(a, b int64) int64 { return a - b },
+		"pct":        func(a, b int64) int { if b == 0 { return 0 }; return int(a * 100 / b) },
 		"version":    func() string { return Version },
 	}
 
